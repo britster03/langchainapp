@@ -111,8 +111,36 @@ def main():
             chain = load_qa_chain(llm=llm, chain_type="stuff") #there are four types of  chains in total bu we are using stuff
             with get_openai_callback() as cb:
                 response = chain.run(input_documents=docs, question=query)
-                print(cb)
+                print(cb) #this will tell us how much we were charged
             st.write(response)
  
 if __name__ == '__main__':
     main()
+    
+    
+# note that there is a optimum solution to use this without charge 
+       # st.write(f'{store_name}')
+ 
+       # if os.path.exists(f"{store_name}.pkl"):
+       #    with open(f"{store_name}.pkl", "rb") as f:
+       #        VectorStore = pickle.load(f)
+            # st.write('Embeddings Loaded from the Disk')
+       # else:
+       #    embeddings = OpenAIEmbeddings()
+       #    VectorStore = FAISS.from_texts(chunks, embedding=embeddings)
+       #    with open(f"{store_name}.pkl", "wb") as f:
+       #        pickle.dump(VectorStore, f)
+
+# ------------------------------------------------------------------------------------------------------------------------------------  
+
+   
+# here if we do this then we then we dont have to generate the embeddings again and again because here we will already create a pkl file which will have the embeddings within them, but it is giving an error which says
+
+# Traceback (most recent call last):
+#  File "C:\Users\user\AppData\Local\Programs\Python\Python310\lib\site-packages\streamlit\runtime\scriptrunner\script_runner.py", line 552, in _run_script       
+#    exec(code, module.__dict__)
+#  File "C:\Users\user\langchainapp\app.py", line 133, in <module>
+#    main()
+#  File "C:\Users\user\langchainapp\app.py", line 102, in main
+#    pickle.dump(embeddings, f)
+# TypeError: cannot pickle '_thread.RLock' object 
