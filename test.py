@@ -1,15 +1,9 @@
 #streamlit for creating gui in python
 import streamlit as st
 from dotenv import load_dotenv
-import dill
-import pickle
-import threading
-import os
 from PyPDF2 import PdfReader
-import csv
 from streamlit_extras.add_vertical_space import add_vertical_space
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain import HuggingFaceHub
 from langchain.vectorstores.faiss import FAISS
@@ -108,17 +102,22 @@ def main():
             # we are using the openai LLM
             # and we will be feeding the questions as well as the context to the LLM and for this purpose we are using the chains from LangChain
             
-            llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature":0, "max_length":512})
+            llm = HuggingFaceHub(repo_id="HuggingFaceH4/zephyr-7b-beta", model_kwargs={"temperature":0.2, "max_length":4000})
             # llm = pipeline(task="text-generation", model=inference_endpoint_url)
             #so we will be using a question-answer(qa) chain , it needs an LLM and in our case we have OpenAI LLM, and also it needs the type of chain
             #we can also define the type of llm we want to use by default it will be using the da-vinci model but we can also change it to gpt 3.5 turbo
             
             chain = load_qa_chain(llm=llm, chain_type="stuff") #there are four types of  chains in total bu we are using stuff
-            
-            with get_openai_callback() as cb:
-                response = chain.run(input_documents=docs, question=query)
-                print(cb) #this will tell us how much we were charged
-            st.write(response)
+            response = chain.run(input_documents=docs, question=query)
+            # print(cb) #this will tell us how much we were charged
+            #st.write(response)
+                # Extract the answer from the response
+            answer_start = response.find("Helpful Answer:")
+            if answer_start != -1:
+               answer = response[answer_start + len("Helpful Answer:"):].strip()
+               st.write(answer)
+            else:
+               st.write("No answer found.")
  
 if __name__ == '__main__':
     main()
