@@ -1,4 +1,5 @@
 #streamlit for creating gui in python
+#chat ui with open ai and human feedback(thumbs up thumbs down)
 import streamlit as st
 from dotenv import load_dotenv
 import dill
@@ -14,6 +15,14 @@ from langchain.vectorstores.faiss import FAISS
 from langchain.llms import OpenAI
 from langchain.chains.question_answering import load_qa_chain
 from langchain.callbacks import get_openai_callback
+from supabase import create_client, Client
+import os
+
+supabase_url = 'https://rquwntqrmfmwtzzlbjci.supabase.co'
+supabase_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdXdudHFybWZtd3R6emxiamNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDExMDYzNTEsImV4cCI6MjAxNjY4MjM1MX0.szFlkP1hTlddGoE8akJrt78fCjB1XVIhWF8ZrKCoxZw'
+
+supabase: Client = create_client(supabase_url, supabase_key)
+
 
 with st.sidebar:
     st.title('😋💬LLM Chat App')
@@ -52,13 +61,14 @@ def main():
         #now next we will take the pages in document and split it into chunks so that our LLM can process them
         #LLMs are large language models and have limited context window, so we have to divide our pages into smaller chunks
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,   #process  the text in chunks of this size (default: 1000).
+            chunk_size=500,   #process  the text in chunks of this size (default: 1000).
             #there will be a overlap of 200 tokens between the conseutive chunks
             chunk_overlap=200,
             length_function=len
         )
         
         chunks = text_splitter.split_text(text=text)
+        st.write(chunks)
         
         #now for these chunks we whave to create embeddings
         #first understand what is embedding? - embedding is a process of creating vectors using deep learning. an embedding is the output of this process -- in other words, the vector that is created by a DL model for the purpose of similarity searches by that model.
@@ -113,6 +123,23 @@ def main():
                 response = chain.run(input_documents=docs, question=query)
                 print(cb) #this will tell us how much we were charged
             st.write(response)
+            st.write(len(response))
+                    # Add feedback buttons
+            feedback_col1, feedback_col2 = st.columns(2)
+            thumbs_up = feedback_col1.button("👍 Thumbs Up")
+            thumbs_down = feedback_col2.button("👎 Thumbs Down")
+            
+                    # Handle feedback
+            if thumbs_up or thumbs_down:
+                feedback = 1 if thumbs_up else -1
+                feedback_data = {"question": query ,"answer": response, "feedback": feedback}
+                st.write(feedback_data)
+                
+                feedback_table = supabase.table("feedback").insert([feedback_data]).execute()
+                st.write(feedback_table)
+
+
+                st.success("Feedback submitted successfully!")
  
 if __name__ == '__main__':
     main()

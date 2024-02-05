@@ -1,6 +1,7 @@
 #streamlit for creating gui in python
-#original hf chat ui with human feedback
+#normal chat gui
 import streamlit as st
+import supabase
 from dotenv import load_dotenv
 from PyPDF2 import PdfReader
 from streamlit_extras.add_vertical_space import add_vertical_space
@@ -9,13 +10,6 @@ from langchain.embeddings import HuggingFaceEmbeddings
 from langchain import HuggingFaceHub
 from langchain.vectorstores.faiss import FAISS
 from langchain.chains.question_answering import load_qa_chain
-from supabase import create_client, Client
-import os
-
-supabase_url = 'https://rquwntqrmfmwtzzlbjci.supabase.co'
-supabase_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdXdudHFybWZtd3R6emxiamNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDExMDYzNTEsImV4cCI6MjAxNjY4MjM1MX0.szFlkP1hTlddGoE8akJrt78fCjB1XVIhWF8ZrKCoxZw'
-
-supabase: Client = create_client(supabase_url, supabase_key)
 
 with st.sidebar:
     st.title('😋💬LLM Chat App')
@@ -30,7 +24,10 @@ with st.sidebar:
     st.write('Made with ❤️ by [Ronit Virwani](https://linkedin.com/in/ronitvirwani)')
 
 load_dotenv()
-
+# Supabase configuration
+supabase_url = "https://rquwntqrmfmwtzzlbjci.supabase.co"
+supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxdXdudHFybWZtd3R6emxiamNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDExMDYzNTEsImV4cCI6MjAxNjY4MjM1MX0.szFlkP1hTlddGoE8akJrt78fCjB1XVIhWF8ZrKCoxZw"
+supabase_client = supabase.create_client(supabase_url, supabase_key)
 # inference_endpoint_url = "https://api-inference.huggingface.co/models/google/flan-t5-xl"
 def main():
     st.header("Chat with PDF 💬")
@@ -107,7 +104,7 @@ def main():
             # we are using the openai LLM
             # and we will be feeding the questions as well as the context to the LLM and for this purpose we are using the chains from LangChain
             
-            llm = HuggingFaceHub(repo_id="HuggingFaceH4/zephyr-7b-beta", model_kwargs={"temperature":0.2, "max_length":10000})
+            llm = HuggingFaceHub(repo_id="HuggingFaceH4/zephyr-7b-beta", model_kwargs={"temperature":0.2, "max_length":4000})
             # llm = pipeline(task="text-generation", model=inference_endpoint_url)
             #so we will be using a question-answer(qa) chain , it needs an LLM and in our case we have OpenAI LLM, and also it needs the type of chain
             #we can also define the type of llm we want to use by default it will be using the da-vinci model but we can also change it to gpt 3.5 turbo
@@ -120,45 +117,47 @@ def main():
             answer_start = response.find("Helpful Answer:")
             if answer_start != -1:
                answer = response[answer_start + len("Helpful Answer:"):].strip()
-               #st.write(answer)
-               #st.write(len(answer))
-
-                   # Split the answer into chunks
-               chunk_size = 2000
-               answer_chunks = [answer[i:i + chunk_size] for i in range(0, len(answer), chunk_size)]
-               #st.write(answer_chunks)
-
-    # Generate embeddings for each chunk and concatenate them
-               response = ""
-               for chunk in answer_chunks:
-                   response += chain.run(input_documents=docs, question=chunk)
-               st.write(response)
-               
-               
-               st.subheader("Feedback:")
-               st.write("Was this answer helpful?")
-               fed_thumbs_up,fed_thumbs_down = st.columns(2)
-            # Add feedback buttons
-               thumbs_up = fed_thumbs_up.button("Yes, it was helpful👍")
-               thumbs_down = fed_thumbs_down.button("Provide a better answer👎")
-
-            # Handle feedback
-            if thumbs_up or thumbs_down:
-                # Determine the feedback value
-                feedback = 1 if thumbs_up else -1
-
-                # Save feedback to Supabase database
-                feedback_data = {"question": query ,"answer": answer, "feedback": feedback}
-                st.write(feedback_data)
-                feedback_table = supabase.table("feedback").insert([feedback_data]).execute()
-                st.write(feedback_table)
-
-
-                st.success("Feedback submitted successfully!")
+               st.write(answer)
+                                   # Add feedback buttons
+               feedback_col1, feedback_col2 = st.columns(2)
+               thumbs_up = feedback_col1.button("👍 Thumbs Up")
+               thumbs_down = feedback_col2.button("👎 Thumbs Down")
+            
+                    # Handle feedback
+               if thumbs_up or thumbs_down:
+                feedback_value = 1 if thumbs_up else -1
+                save_feedback(pdf.name, query, response, feedback_value)
                 
+            else:
+               st.write("No answer found.")
+               
+def save_feedback(pdf_name, question, answer, feedback_value):
+    # Define the table name for storing feedback
+    table_name = "feedback"
+
+    # Prepare data for insertion
+    feedback_data = {
+        "pdf_name": pdf_name,
+        "question": question,
+        "answer": answer,
+        "feedback": feedback_value,
+    }
+
+    try:
+        # Insert feedback data into Supabase database
+        response = supabase_client.table(table_name).insert([feedback_data])
+
+        # Check for errors and return success status
+        if response is not None:
+            st.error(f"Error saving feedback: {response['error']}")
+            return False
         else:
-                st.write("No answer found.")
- 
+            st.success("Feedback successfully saved!")
+            return True
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+        return False
+
 if __name__ == '__main__':
     main()
     
