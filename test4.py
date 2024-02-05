@@ -1,5 +1,5 @@
 #streamlit for creating gui in python
-# multiple queries
+# multiple queries with hf feedback
 import streamlit as st
 from dotenv import load_dotenv
 from PyPDF2 import PdfReader
