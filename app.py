@@ -128,6 +128,7 @@ def main():
             feedback_col1, feedback_col2 = st.columns(2)
             thumbs_up = feedback_col1.button("👍 Thumbs Up")
             thumbs_down = feedback_col2.button("👎 Thumbs Down")
+            st.write(thumbs_up, thumbs_down)
             
                     # Handle feedback
             if thumbs_up or thumbs_down:
